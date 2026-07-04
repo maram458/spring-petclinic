@@ -17,18 +17,18 @@ pipeline {
 
         stage('🧪 Tests') {
             steps {
-                sh 'mvn test -Dspring.profiles.active=test'
+                sh 'chmod +x mvnw && ./mvnw test -Dspring.profiles.active=test'
             }
             post {
                 always {
-                    junit '**/target/surefire-reports/*.xml'
+                    junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
                 }
             }
         }
 
         stage('📦 Build') {
             steps {
-                sh 'mvn clean package -DskipTests'
+                sh './mvnw clean package -DskipTests'
             }
         }
 
