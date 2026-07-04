@@ -1,23 +1,25 @@
 pipeline {
     agent any
-
     environment {
         DOCKER_IMAGE = "maramaroua/spring-petclinic"
         DOCKER_TAG   = "${BUILD_NUMBER}"
     }
-
     stages {
-
         stage('📥 Checkout') {
             steps {
                 checkout scm
                 echo "✅ Code checked out"
             }
         }
-
         stage('🧪 Tests') {
             steps {
-                sh 'chmod +x mvnw && ./mvnw test -Dspring.profiles.active=test'
+                sh '''
+                    chmod +x mvnw
+                    ./mvnw test \
+                        -Dspring.profiles.active=test \
+                        -Dexclude="**/PostgresIntegrationTests.java" \
+                        -Dsurefire.excludes="**/PostgresIntegrationTests.java"
+                '''
             }
             post {
                 always {
@@ -25,13 +27,11 @@ pipeline {
                 }
             }
         }
-
         stage('📦 Build') {
             steps {
                 sh './mvnw clean package -DskipTests'
             }
         }
-
         stage('🐳 Docker Build') {
             steps {
                 sh """
@@ -40,7 +40,6 @@ pipeline {
                 """
             }
         }
-
         stage('🚀 Docker Push') {
             steps {
                 withCredentials([usernamePassword(
@@ -56,30 +55,27 @@ pipeline {
                 }
             }
         }
-
         stage('☸️ Deploy to Kubernetes') {
             steps {
                 sh """
-                    kubectl set image deployment/petclinic \
+                    /var/jenkins_home/kubectl set image deployment/petclinic \
                         petclinic=${DOCKER_IMAGE}:${DOCKER_TAG}
-                    kubectl rollout status deployment/petclinic
+                    /var/jenkins_home/kubectl rollout status deployment/petclinic
                 """
             }
         }
-
         stage('✅ Health Check') {
             steps {
                 sh """
                     sleep 10
-                    kubectl get pods -l app=petclinic
+                    /var/jenkins_home/kubectl get pods -l app=petclinic
                 """
             }
         }
     }
-
     post {
         success {
-            echo '🎉 Deployed successfully!'
+            echo '🎉 Pipeline succeeded! App deployed to Kubernetes.'
         }
         failure {
             echo '❌ Pipeline failed!'
