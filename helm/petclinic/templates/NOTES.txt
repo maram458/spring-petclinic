@@ -1,2 +1,2 @@
 Petclinic has been deployed successfully!
-Access it at: http://192.168.71.152:30080
+Access it at port 30080 on your cluster IP.
