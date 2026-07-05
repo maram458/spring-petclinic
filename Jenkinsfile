@@ -55,12 +55,15 @@ pipeline {
                 }
             }
         }
-        stage('☸️ Deploy to Kubernetes') {
+        stage('☸️ Deploy with Helm') {
             steps {
                 sh """
-                    /var/jenkins_home/kubectl set image deployment/petclinic \
-                        petclinic=${DOCKER_IMAGE}:${DOCKER_TAG}
-                    /var/jenkins_home/kubectl rollout status deployment/petclinic
+                    /var/jenkins_home/helm upgrade --install petclinic \
+                        ./helm/petclinic \
+                        --set image.tag=${DOCKER_TAG} \
+                        --set image.repository=${DOCKER_IMAGE} \
+                        --wait \
+                        --timeout 120s
                 """
             }
         }
@@ -75,7 +78,7 @@ pipeline {
     }
     post {
         success {
-            echo '🎉 Pipeline succeeded! App deployed to Kubernetes.'
+            echo '🎉 Deployed successfully with Helm!'
         }
         failure {
             echo '❌ Pipeline failed!'

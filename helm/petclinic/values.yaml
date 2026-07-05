@@ -1,0 +1,33 @@
+replicaCount: 1
+
+image:
+  repository: maramaroua/spring-petclinic
+  pullPolicy: Always
+  tag: "latest"
+
+service:
+  type: NodePort
+  port: 8080
+  nodePort: 30080
+
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "250m"
+  limits:
+    memory: "1Gi"
+    cpu: "500m"
+
+livenessProbe:
+  httpGet:
+    path: /actuator/health
+    port: 8080
+  initialDelaySeconds: 60
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health
+    port: 8080
+  initialDelaySeconds: 60
+  periodSeconds: 10
