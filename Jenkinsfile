@@ -40,6 +40,18 @@ pipeline {
                 """
             }
         }
+
+
+	stage('🔒 Security Scan') {
+            steps {
+                sh '''
+                    /var/jenkins_home/bin/trivy image ${DOCKER_IMAGE}:${DOCKER_TAG} \
+                        --severity HIGH,CRITICAL \
+                        --exit-code 0 \
+                        --format table
+                '''
+            }
+        }
         stage('🚀 Docker Push') {
             steps {
                 withCredentials([usernamePassword(
