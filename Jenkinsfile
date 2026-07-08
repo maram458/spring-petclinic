@@ -5,12 +5,14 @@ pipeline {
         DOCKER_TAG   = "${BUILD_NUMBER}"
     }
     stages {
+
         stage('📥 Checkout') {
             steps {
                 checkout scm
                 echo "✅ Code checked out"
             }
         }
+
         stage('🧪 Tests') {
             steps {
                 sh '''
@@ -27,11 +29,13 @@ pipeline {
                 }
             }
         }
+
         stage('📦 Build') {
             steps {
                 sh './mvnw clean package -DskipTests'
             }
         }
+
         stage('🐳 Docker Build') {
             steps {
                 sh """
@@ -41,17 +45,18 @@ pipeline {
             }
         }
 
-
-	stage('🔒 Security Scan') {
+        stage('🔒 Security Scan') {
             steps {
                 sh '''
                     /var/jenkins_home/bin/trivy image ${DOCKER_IMAGE}:${DOCKER_TAG} \
                         --severity HIGH,CRITICAL \
                         --exit-code 0 \
-                        --format table
+                        --format table \
+                        --timeout 10m
                 '''
             }
         }
+
         stage('🚀 Docker Push') {
             steps {
                 withCredentials([usernamePassword(
@@ -67,6 +72,7 @@ pipeline {
                 }
             }
         }
+
         stage('☸️ Deploy with Helm') {
             steps {
                 sh """
@@ -79,6 +85,7 @@ pipeline {
                 """
             }
         }
+
         stage('✅ Health Check') {
             steps {
                 sh """
@@ -88,6 +95,7 @@ pipeline {
             }
         }
     }
+
     post {
         success {
             echo '🎉 Deployed successfully with Helm!'
