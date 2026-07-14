@@ -1,9 +1,11 @@
 pipeline {
     agent any
+
     environment {
         DOCKER_IMAGE = "maramaroua/spring-petclinic"
         DOCKER_TAG   = "${BUILD_NUMBER}"
     }
+
     stages {
 
         stage('📥 Checkout') {
@@ -73,24 +75,35 @@ pipeline {
             }
         }
 
-        stage('☸️ Deploy with Helm') {
+        stage('📝 Update GitOps Manifest') {
             steps {
-                sh """
-                    /var/jenkins_home/helm upgrade --install petclinic \
-                        ./helm/petclinic \
-                        --set image.tag=${DOCKER_TAG} \
-                        --set image.repository=${DOCKER_IMAGE} \
-                        --wait \
-                        --timeout 120s
-                """
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-credentials',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
+                    sh """
+                        sed -i 's/tag: ".*"/tag: "${DOCKER_TAG}"/' helm/petclinic/values.yaml
+
+                        git config user.email "jenkins@petclinic.local"
+                        git config user.name "Jenkins CI"
+
+                        git add helm/petclinic/values.yaml
+
+                        git commit -m "CI: bump image tag to ${DOCKER_TAG}" || echo "No changes to commit"
+
+                        git push https://\${GIT_USER}:\${GIT_TOKEN}@github.com/maram458/spring-petclinic.git HEAD:main
+                    """
+                }
             }
         }
 
         stage('✅ Health Check') {
             steps {
                 sh """
-                    sleep 10
+                    sleep 30
                     /var/jenkins_home/kubectl get pods -l app=petclinic
+                    /var/jenkins_home/kubectl get application petclinic -n argocd
                 """
             }
         }
@@ -98,11 +111,13 @@ pipeline {
 
     post {
         success {
-            echo '🎉 Deployed successfully with Helm!'
+            echo '🎉 Deployed successfully with GitOps + ArgoCD!'
         }
+
         failure {
             echo '❌ Pipeline failed!'
         }
+
         always {
             cleanWs()
         }
