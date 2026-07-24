@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: maramaroua/spring-petclinic
   pullPolicy: Always
-  tag: "latest"
+  tag: "24"
 
 service:
   type: NodePort
