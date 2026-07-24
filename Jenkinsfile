@@ -102,8 +102,7 @@ pipeline {
             steps {
                 sh """
                     sleep 30
-                    /var/jenkins_home/kubectl get pods -l app=petclinic
-                    /var/jenkins_home/kubectl get application petclinic -n argocd
+	            /var/jenkins_home/kubectl get pods -l app=petclinic
                 """
             }
         }
