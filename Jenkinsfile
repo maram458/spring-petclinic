@@ -47,18 +47,19 @@ pipeline {
             }
         }
 
-        stage('🔒 Security Scan') {
-            steps {
-                sh '''
-                    /var/jenkins_home/bin/trivy image ${DOCKER_IMAGE}:${DOCKER_TAG} \
-                        --severity HIGH,CRITICAL \
-                        --exit-code 0 \
-                        --format table \
-                        --timeout 10m
-                '''
-            }
-        }
-
+	stage('🔒 Security Scan') {
+ 	   steps {
+        	sh '''
+            	/var/jenkins_home/bin/trivy image ${DOCKER_IMAGE}:${DOCKER_TAG} \
+                	--severity HIGH,CRITICAL \
+                	--exit-code 0 \
+                	--format table \
+                	--timeout 10m \
+                	--scanners vuln \
+                	--pkg-types os
+        	'''
+    		}
+	}
         stage('🚀 Docker Push') {
             steps {
                 withCredentials([usernamePassword(
