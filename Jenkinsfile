@@ -78,11 +78,11 @@ pipeline {
 
         stage('📝 Update GitOps Manifest') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'github-credentials',
-                    usernameVariable: 'GIT_USER',
-                    passwordVariable: 'GIT_TOKEN'
-                )]) {
+
+		withCredentials([usernamePassword(
+		    credentialsId: 'github-app-credentials',
+		    usernameVariable: 'GIT_USER',
+    		    passwordVariable: 'GIT_TOKEN'                )]) {
                     sh """
                         sed -i 's/tag: ".*"/tag: "${DOCKER_TAG}"/' helm/petclinic/values.yaml
 
