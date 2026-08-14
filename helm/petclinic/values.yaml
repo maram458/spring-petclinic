@@ -3,7 +3,6 @@ replicaCount: 1
 image:
   repository: maramaroua/spring-petclinic
   pullPolicy: Always
-
   tag: "broken-demo"
 
 service:
