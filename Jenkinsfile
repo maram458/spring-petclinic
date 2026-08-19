@@ -38,51 +38,68 @@ pipeline {
             }
         }
 
-        stage('🐳 Docker Build') {
+        stage('🐳 Kaniko Build & Push') {
             steps {
                 sh """
-                    docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
-                    docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                    cat <<KANIKOEOF > kaniko-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kaniko-build-${BUILD_NUMBER}
+  namespace: default
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: kaniko
+        image: gcr.io/kaniko-project/executor:latest
+        args:
+        - "--context=git://github.com/maram458/spring-petclinic.git#refs/heads/main"
+        - "--destination=${DOCKER_IMAGE}:${DOCKER_TAG}"
+        - "--destination=${DOCKER_IMAGE}:latest"
+        volumeMounts:
+        - name: docker-config
+          mountPath: /kaniko/.docker
+      volumes:
+      - name: docker-config
+        secret:
+          secretName: dockerhub-kaniko-secret
+          items:
+          - key: .dockerconfigjson
+            path: config.json
+KANIKOEOF
+                    /var/jenkins_home/kubectl apply -f kaniko-job.yaml
+                    /var/jenkins_home/kubectl wait --for=condition=complete job/kaniko-build-${BUILD_NUMBER} -n default --timeout=600s || \
+                      (/var/jenkins_home/kubectl logs job/kaniko-build-${BUILD_NUMBER} -n default; exit 1)
+                    /var/jenkins_home/kubectl logs job/kaniko-build-${BUILD_NUMBER} -n default
+                    /var/jenkins_home/kubectl delete job/kaniko-build-${BUILD_NUMBER} -n default --ignore-not-found
                 """
             }
         }
 
-	stage('🔒 Security Scan') {
- 	   steps {
-        	sh '''
-            	/var/jenkins_home/bin/trivy image ${DOCKER_IMAGE}:${DOCKER_TAG} \
-                	--severity HIGH,CRITICAL \
-                	--exit-code 0 \
-                	--format table \
-                	--timeout 10m \
-                	--scanners vuln \
-                	--pkg-types os
-        	'''
-    		}
-	}
-        stage('🚀 Docker Push') {
+        stage('🔒 Security Scan') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-credentials',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker push "$DOCKER_IMAGE:$DOCKER_TAG"
-                        docker push "$DOCKER_IMAGE:latest"
-                    '''
-                }
+                sh '''
+                    /var/jenkins_home/bin/trivy image ${DOCKER_IMAGE}:${DOCKER_TAG} \
+                        --severity HIGH,CRITICAL \
+                        --exit-code 0 \
+                        --format table \
+                        --timeout 10m \
+                        --scanners vuln \
+                        --pkg-types os
+                '''
             }
         }
 
         stage('📝 Update GitOps Manifest') {
             steps {
-
-		withCredentials([usernamePassword(
-		    credentialsId: 'github-app-credentials',
-		    usernameVariable: 'GIT_USER',
-    		    passwordVariable: 'GIT_TOKEN'                )]) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-app-credentials',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
                     sh """
                         sed -i 's/tag: ".*"/tag: "${DOCKER_TAG}"/' helm/petclinic/values.yaml
 
@@ -103,7 +120,7 @@ pipeline {
             steps {
                 sh """
                     sleep 30
-	            /var/jenkins_home/kubectl get pods -l app=petclinic
+                    /var/jenkins_home/kubectl get pods -l app=petclinic
                 """
             }
         }
