@@ -59,6 +59,8 @@ spec:
         - "--context=git://github.com/maram458/spring-petclinic.git#refs/heads/main"
         - "--destination=${DOCKER_IMAGE}:${DOCKER_TAG}"
         - "--destination=${DOCKER_IMAGE}:latest"
+        - "--cache=true"
+        - "--cache-ttl=24h"
         volumeMounts:
         - name: docker-config
           mountPath: /kaniko/.docker
@@ -71,7 +73,7 @@ spec:
             path: config.json
 KANIKOEOF
                     /var/jenkins_home/kubectl apply -f kaniko-job.yaml
-                    /var/jenkins_home/kubectl wait --for=condition=complete job/kaniko-build-${BUILD_NUMBER} -n default --timeout=600s || \
+                    /var/jenkins_home/kubectl wait --for=condition=complete job/kaniko-build-${BUILD_NUMBER} -n default --timeout=900s || \
                       (/var/jenkins_home/kubectl logs job/kaniko-build-${BUILD_NUMBER} -n default; exit 1)
                     /var/jenkins_home/kubectl logs job/kaniko-build-${BUILD_NUMBER} -n default
                     /var/jenkins_home/kubectl delete job/kaniko-build-${BUILD_NUMBER} -n default --ignore-not-found
